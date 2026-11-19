@@ -1,0 +1,68 @@
+services:
+  namenode:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ecommerce-hadoop:3.3.6
+    container_name: ecommerce-namenode
+    hostname: namenode
+    command: ["hdfs", "namenode"]
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    volumes:
+      - ./hadoop/config:/opt/hadoop/etc/hadoop
+      - namenode_data:/data/name
+
+  datanode:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ecommerce-hadoop:3.3.6
+    container_name: ecommerce-datanode
+    hostname: datanode
+    command: ["hdfs", "datanode"]
+    depends_on:
+      - namenode
+    volumes:
+      - ./hadoop/config:/opt/hadoop/etc/hadoop
+      - datanode_data:/data/data
+
+  hive-metastore:
+    image: apache/hive:4.2.1
+    container_name: ecommerce-hive-metastore
+    hostname: hive-metastore
+    depends_on:
+      - namenode
+    environment:
+      SERVICE_NAME: metastore
+    ports:
+      - "9083:9083"
+    volumes:
+      - ./hadoop/config:/opt/hadoop/etc/hadoop
+      - ./hive/hive-site.xml:/opt/hive/conf/hive-site.xml
+      - hive_metastore_data:/opt/hive/data
+
+  hiveserver2:
+    image: apache/hive:4.2.1
+    container_name: ecommerce-hiveserver2
+    hostname: hiveserver2
+    depends_on:
+      - hive-metastore
+    environment:
+      SERVICE_NAME: hiveserver2
+      SERVICE_OPTS: "-Dhive.metastore.uris=thrift://hive-metastore:9083"
+      IS_RESUME: "true"
+    ports:
+      - "10000:10000"
+      - "10002:10002"
+    volumes:
+      - ./hadoop/config:/opt/hadoop/etc/hadoop
+      - ./hive/hive-site.xml:/opt/hive/conf/hive-site.xml
+      - hive_server_data:/opt/hive/data
+
+volumes:
+  namenode_data:
+  datanode_data:
+  hive_metastore_data:
+  hive_server_data:
